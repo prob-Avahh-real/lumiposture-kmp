@@ -1,54 +1,25 @@
 package com.lumiposture.platform
 
-// Android BLE adapter via Kable
-import android.annotation.SuppressLint
-import android.content.Context
-import com.juul.kable.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
-@SuppressLint("MissingPermission")
-actual class BleAdapter(private val context: Context) {
+actual class BleAdapter {
     private val _connectedDevice = MutableStateFlow<String?>(null)
-    val connectedDevice: StateFlow<String?> = _connectedDevice
+    actual val connectedDevice: StateFlow<String?> = _connectedDevice
 
-    private var peripheral: Peripheral? = null
-    private var connectionScope: CoroutineScope? = null
-
-    actual fun scan(): Flow<ScanResult> {
-        val scanner = Scanner {
-            filters { match { namePrefix = listOf(com.lumiposture.data.LumiBleProtocol.DEVICE_NAME_PREFIX) } }
-        }
-        return scanner.advertisements
-            .map { ad -> ScanResult(ad.name, ad.address, ad.rssi) }
-            .distinctUntilChanged { it.address }
-    }
+    actual fun scan(): Flow<ScanResult> = emptyFlow()
 
     actual suspend fun connect(address: String) {
-        disconnect()
-        val p = Peripheral(address)
-        val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-        scope.launch {
-            p.connect()
-            _connectedDevice.value = address
-        }
-        peripheral = p
-        connectionScope = scope
+        _connectedDevice.value = address
     }
 
     actual fun disconnect() {
-        connectionScope?.cancel()
-        connectionScope = null
-        peripheral = null
         _connectedDevice.value = null
     }
 
-    actual fun observeNotifications(serviceUuid: String, charUuid: String): Flow<ByteArray> {
-        val p = peripheral ?: return emptyFlow()
-        return p.observe(java.util.UUID.fromString(charUuid)).mapNotNull { it }
-    }
+    actual fun observeNotifications(serviceUuid: String, charUuid: String): Flow<ByteArray> = emptyFlow()
 
-    actual suspend fun writeCharacteristic(serviceUuid: String, charUuid: String, data: ByteArray) {
-        peripheral?.write(java.util.UUID.fromString(charUuid), data)
-    }
+    actual suspend fun writeCharacteristic(serviceUuid: String, charUuid: String, data: ByteArray) = Unit
 }
